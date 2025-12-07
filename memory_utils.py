@@ -39,4 +39,4 @@ def get_emotional_trend(mem0: Mem0Tools):
     elif stress_values[-1] < stress_values[0]:
         return "Trend stres: în scădere 📉"
     else:
-        return "Trend stres: stabil ➖"
+        return "Trend stres: stabil"
