@@ -158,7 +158,7 @@ if __name__ == "__main__":
                 if crisis_type == "severe_self_harm":
                     print("""
 ╔══════════════════════════════════════════════════════════════╗
-║              🚨 IMMEDIATE CRISIS SUPPORT 🚨                ║
+║              🚨 IMMEDIATE CRISIS SUPPORT 🚨                  ║
 ║           YOU ARE NOT ALONE - HELP IS AVAILABLE NOW          ║
 ╚══════════════════════════════════════════════════════════════╝
 
@@ -189,7 +189,7 @@ Your safety is the priority. Please reach out to a trained crisis counselor IMME
                 elif crisis_type == "severe_harm_others":
                     print("""
 ╔══════════════════════════════════════════════════════════════╗
-║              🚨 CRISIS - URGENT ACTION NEEDED 🚨           ║
+║              🚨 CRISIS - URGENT ACTION NEEDED 🚨             ║
 ║              THOUGHTS OF HARMING OTHERS DETECTED             ║
 ╚══════════════════════════════════════════════════════════════╝
 
@@ -217,7 +217,7 @@ If you are having thoughts of harming others, professional help is critical:
                 elif crisis_type == "severe_crisis":
                     print("""
 ╔══════════════════════════════════════════════════════════════╗
-║                  💙 CRISIS SUPPORT 💙                       ║
+║                  💙 CRISIS SUPPORT 💙                        ║
 ║            YOU ARE EXPERIENCING SEVERE DISTRESS              ║
 ║          PROFESSIONAL HELP CAN MAKE A DIFFERENCE             ║
 ╚══════════════════════════════════════════════════════════════╝
