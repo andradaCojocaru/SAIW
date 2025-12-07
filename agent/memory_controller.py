@@ -1,38 +1,66 @@
 from mem0 import MemoryClient
+import os
 
 class StressMemory:
     """Memorie persistentă pentru jurnal emoțional"""
 
     def __init__(self):
-        self.client = MemoryClient()
+        # Initialize Mem0 with API key from environment
+        api_key = os.getenv("MEM0_API_KEY")
+        if not api_key:
+            raise ValueError("MEM0_API_KEY not found in environment variables")
+        
+        self.client = MemoryClient(api_key=api_key)
+        self.default_user = "stress_journal_user"  # Consistent user ID
 
-    def save(self, text, user="default"):
+    def save(self, text, user=None):
         """
         Salvează o intrare în memorie.
         `messages` trebuie să fie o listă de dict-uri conform mem0ai API.
         """
+        if user is None:
+            user = self.default_user
+        
         # Convertim text simplu într-un message
         message = {"role": "user", "content": text}
         return self.client.add(messages=[message], user_id=user)
 
-    def search(self, query, user="default"):
+    def search(self, query, user=None):
         """Caută intrări similare"""
-        return self.client.search(
+        if user is None:
+            user = self.default_user
+        
+        result = self.client.search(
             query=query,
             user_id=user,
-            filters={
-                "AND": [
-                    {"user_id": user}
-                ]
-            }
+            filters={"user_id": user}
         )
+        
+        # Handle Mem0 API response format
+        if isinstance(result, dict) and 'results' in result:
+            return result['results']
+        elif isinstance(result, list):
+            return result
+        else:
+            return []
 
 
-    def all_memories(self, user="default"):
+    def all_memories(self, user=None):
         """Returnează toate intrările din memorie"""
-        return self.client.get_all(user_id=user)
+        if user is None:
+            user = self.default_user
+        
+        result = self.client.get_all(user_id=user)
+        
+        # Handle Mem0 API response format
+        if isinstance(result, dict) and 'results' in result:
+            return result['results']
+        elif isinstance(result, list):
+            return result
+        else:
+            return []
 
-    def delete(self, query_or_id, user="default"):
+    def delete(self, query_or_id, user=None):
         """Delete memory entries.
 
         Tries to interpret `query_or_id` as an exact memory id first; if not,
@@ -41,6 +69,9 @@ class StressMemory:
         tries a few common names (`delete`, `remove`, `delete_memory`). If
         those are not present, it raises NotImplementedError with guidance.
         """
+        if user is None:
+            user = self.default_user
+        
         # If the client exposes a direct delete method, try it.
         for method_name in ("delete", "remove", "delete_memory", "delete_by_id"):
             method = getattr(self.client, method_name, None)
