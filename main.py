@@ -93,129 +93,131 @@ agent_os = AgentOS(
 )
 
 app = agent_os.get_app()
-
-# Create safe process_entry with guardrails
-process_entry = create_safe_process_entry(memory, agent, guardrails)
-
-
 # 5️⃣ CLI Loop
 if __name__ == "__main__":
-    print("╔════════════════════════════════════════════════════╗")
-    print("║        💭 Stress Journal Agent - SAIW 💭          ║")
-    print("║              Type 'exit' to quit                   ║")
-    print("╚════════════════════════════════════════════════════╝\n")
+    agent_os.serve(app="main:app", reload=True)
+# # Create safe process_entry with guardrails
+# process_entry = create_safe_process_entry(memory, agent, guardrails)
+
+
+# # 5️⃣ CLI Loop
+# if __name__ == "__main__":
+#     print("╔════════════════════════════════════════════════════╗")
+#     print("║        💭 Stress Journal Agent - SAIW 💭          ║")
+#     print("║              Type 'exit' to quit                   ║")
+#     print("╚════════════════════════════════════════════════════╝\n")
     
-    while True:
-        try:
-            user_input = input("You: ").strip()
+#     while True:
+#         try:
+#             user_input = input("You: ").strip()
             
-            # Handle special commands
-            if user_input.lower() == "exit":
-                print("\n👋 Goodbye! Remember to take care of yourself.\n")
-                break
+#             # Handle special commands
+#             if user_input.lower() == "exit":
+#                 print("\n👋 Goodbye! Remember to take care of yourself.\n")
+#                 break
             
-            if not user_input:
-                continue
+#             if not user_input:
+#                 continue
             
-            # Process with guardrails
-            response = process_entry(user_input)
+#             # Process with guardrails
+#             response = process_entry(user_input)
             
-            # Handle crisis detection (None return value)
-            if response is None:
-                # Crisis detected - display appropriate resources
-                is_crisis, crisis_type = guardrails.check_crisis(user_input)
-                if crisis_type == "severe_self_harm":
-                    print("""
-╔══════════════════════════════════════════════════════════════╗
-║              🚨 IMMEDIATE CRISIS SUPPORT 🚨                  ║
-║           YOU ARE NOT ALONE - HELP IS AVAILABLE NOW          ║
-╚══════════════════════════════════════════════════════════════╝
+#             # Handle crisis detection (None return value)
+#             if response is None:
+#                 # Crisis detected - display appropriate resources
+#                 is_crisis, crisis_type = guardrails.check_crisis(user_input)
+#                 if crisis_type == "severe_self_harm":
+#                     print("""
+# ╔══════════════════════════════════════════════════════════════╗
+# ║              🚨 IMMEDIATE CRISIS SUPPORT 🚨                  ║
+# ║           YOU ARE NOT ALONE - HELP IS AVAILABLE NOW          ║
+# ╚══════════════════════════════════════════════════════════════╝
 
-⚠️  THIS IS A MENTAL HEALTH EMERGENCY ⚠️
+# ⚠️  THIS IS A MENTAL HEALTH EMERGENCY ⚠️
 
-Your safety is the priority. Please reach out to a trained crisis counselor IMMEDIATELY:
+# Your safety is the priority. Please reach out to a trained crisis counselor IMMEDIATELY:
 
-📞 CALL 988 (National Suicide Prevention Lifeline)
-   • Available 24/7 • Free • Confidential
-   • Call or text 988 from any phone
+# 📞 CALL 988 (National Suicide Prevention Lifeline)
+#    • Available 24/7 • Free • Confidential
+#    • Call or text 988 from any phone
 
-📞 INTERNATIONAL Crisis Support:
-   • Crisis Text Line: Text HOME to 741741
-   • International Association for Suicide Prevention:
-     https://www.iasp.info/resources/Crisis_Centres/
+# 📞 INTERNATIONAL Crisis Support:
+#    • Crisis Text Line: Text HOME to 741741
+#    • International Association for Suicide Prevention:
+#      https://www.iasp.info/resources/Crisis_Centres/
 
-🚑 IF IN IMMEDIATE DANGER:
-   • CALL 911 (US Emergency Services)
-   • GO TO YOUR NEAREST EMERGENCY ROOM
-   • Tell someone you trust right now
+# 🚑 IF IN IMMEDIATE DANGER:
+#    • CALL 911 (US Emergency Services)
+#    • GO TO YOUR NEAREST EMERGENCY ROOM
+#    • Tell someone you trust right now
 
-💙 REMEMBER:
-   • Your life has value and meaning
-   • These feelings can change with proper support
-   • Mental health professionals are trained to help
-   • You deserve to live and feel better
-""")
-                elif crisis_type == "severe_harm_others":
-                    print("""
-╔══════════════════════════════════════════════════════════════╗
-║              🚨 CRISIS - URGENT ACTION NEEDED 🚨             ║
-║              THOUGHTS OF HARMING OTHERS DETECTED             ║
-╚══════════════════════════════════════════════════════════════╝
+# 💙 REMEMBER:
+#    • Your life has value and meaning
+#    • These feelings can change with proper support
+#    • Mental health professionals are trained to help
+#    • You deserve to live and feel better
+# """)
+#                 elif crisis_type == "severe_harm_others":
+#                     print("""
+# ╔══════════════════════════════════════════════════════════════╗
+# ║              🚨 CRISIS - URGENT ACTION NEEDED 🚨             ║
+# ║              THOUGHTS OF HARMING OTHERS DETECTED             ║
+# ╚══════════════════════════════════════════════════════════════╝
 
-⚠️  THIS IS A SERIOUS MENTAL HEALTH EMERGENCY ⚠️
+# ⚠️  THIS IS A SERIOUS MENTAL HEALTH EMERGENCY ⚠️
 
-If you are having thoughts of harming others, professional help is critical:
+# If you are having thoughts of harming others, professional help is critical:
 
-📞 CALL 911 or go to the Emergency Room immediately
+# 📞 CALL 911 or go to the Emergency Room immediately
 
-📞 Crisis Support Lines:
-   • National Suicide Prevention Lifeline: 988
-   • Crisis Text Line: Text HOME to 741741
-   • SAMHSA National Helpline: 1-800-662-4357
+# 📞 Crisis Support Lines:
+#    • National Suicide Prevention Lifeline: 988
+#    • Crisis Text Line: Text HOME to 741741
+#    • SAMHSA National Helpline: 1-800-662-4357
 
-🏥 IN-PERSON HELP:
-   • Go to your nearest Emergency Room
-   • Tell them about your thoughts and feelings
-   • They have trained professionals to help
+# 🏥 IN-PERSON HELP:
+#    • Go to your nearest Emergency Room
+#    • Tell them about your thoughts and feelings
+#    • They have trained professionals to help
 
-💙 IMPORTANT:
-   • Violent thoughts are a symptom that treatment can help
-   • Professional intervention prevents tragedy
-   • Many people recover with proper care
-""")
-                elif crisis_type == "severe_crisis":
-                    print("""
-╔══════════════════════════════════════════════════════════════╗
-║                  💙 CRISIS SUPPORT 💙                        ║
-║            YOU ARE EXPERIENCING SEVERE DISTRESS              ║
-║          PROFESSIONAL HELP CAN MAKE A DIFFERENCE             ║
-╚══════════════════════════════════════════════════════════════╝
+# 💙 IMPORTANT:
+#    • Violent thoughts are a symptom that treatment can help
+#    • Professional intervention prevents tragedy
+#    • Many people recover with proper care
+# """)
+#                 elif crisis_type == "severe_crisis":
+#                     print("""
+# ╔══════════════════════════════════════════════════════════════╗
+# ║                  💙 CRISIS SUPPORT 💙                        ║
+# ║            YOU ARE EXPERIENCING SEVERE DISTRESS              ║
+# ║          PROFESSIONAL HELP CAN MAKE A DIFFERENCE             ║
+# ╚══════════════════════════════════════════════════════════════╝
 
-⚠️  YOU NEED PROFESSIONAL MENTAL HEALTH SUPPORT ⚠️
+# ⚠️  YOU NEED PROFESSIONAL MENTAL HEALTH SUPPORT ⚠️
 
-The feelings you're experiencing require professional care. Please reach out:
+# The feelings you're experiencing require professional care. Please reach out:
 
-📞 CALL 988 (National Suicide Prevention Lifeline)
-   • Talk to a trained counselor
-   • Available 24/7, free, confidential
-   • Call or text
+# 📞 CALL 988 (National Suicide Prevention Lifeline)
+#    • Talk to a trained counselor
+#    • Available 24/7, free, confidential
+#    • Call or text
 
-📞 Other Support:
-   • Crisis Text Line: Text HOME to 741741
-   • SAMHSA National Helpline: 1-800-662-4357
+# 📞 Other Support:
+#    • Crisis Text Line: Text HOME to 741741
+#    • SAMHSA National Helpline: 1-800-662-4357
 
-🏥 MENTAL HEALTH PROFESSIONALS:
-   • Call your local emergency room
-   • Find a therapist/psychiatrist
-   • Contact NAMI: nami.org
-   • Find treatment: findhelp.org
-""")
-            else:
-                print(f"\nAgent: {response}\n")
+# 🏥 MENTAL HEALTH PROFESSIONALS:
+#    • Call your local emergency room
+#    • Find a therapist/psychiatrist
+#    • Contact NAMI: nami.org
+#    • Find treatment: findhelp.org
+# """)
+#             else:
+#                 print(f"\nAgent: {response}\n")
             
-        except KeyboardInterrupt:
-            print("\n\n👋 Goodbye! Take care of yourself.\n")
-            break
-        except Exception as e:
-            print(f"\n❌ An unexpected error occurred: {str(e)}")
-            print("Please try again or contact support.\n")
+#         except KeyboardInterrupt:
+#             print("\n\n👋 Goodbye! Take care of yourself.\n")
+#             break
+#         except Exception as e:
+#             print(f"\n❌ An unexpected error occurred: {str(e)}")
+#             print("Please try again or contact support.\n")
