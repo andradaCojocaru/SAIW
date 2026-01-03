@@ -10,6 +10,7 @@ from agent.memory_controller import StressMemory
 from agent.guardrails import Guardrails, create_safe_process_entry
 from textblob import TextBlob
 from agent.prompts import COMBINED_PROMPT as combined_prompt
+from emotion_utils import analyze_emotions_for_tool
 import json
 
 load_dotenv()
@@ -56,48 +57,16 @@ def memory_delete(query_or_id: str, user: str = None) -> list:
 # 2️⃣ Model OpenAI
 chat_model = OpenAIChat(id="gpt-4o-mini")
 
+def process_entry(user_text: str):
+    # Save the raw user entry so the agent can use or augment it via the memory tool.
+    memory.save(f"User entry: {user_text}")
 
-# 4️⃣ Utility Functions
-def analyze_emotions(text):
-    """Backward-compatible function used locally.
-
-    Returns (emotion, stress_level) as before.
-    """
-    polarity = TextBlob(text).sentiment.polarity
-    text_l = text.lower()
-    if any(w in text_l for w in ["stres", "anxiet", "îngrijorat", "panică"]):
-        emotion = "stress"
-    elif polarity > 0.4:
-        emotion = "joy"
-    elif polarity < -0.4:
-        emotion = "sadness"
-    else:
-        emotion = "neutral"
-    stress_level = 50 - (polarity * 50)
-    if emotion == "stress":
-        stress_level = 80
-    return emotion, round(stress_level)
-
-
-def analyze_emotions_for_tool(text: str):
-    """Helper that returns (emotion, stress_level, polarity) for the tool wrapper."""
-    polarity = TextBlob(text).sentiment.polarity
-    text_l = text.lower()
-    if any(w in text_l for w in ["stres", "anxiet", "îngrijorat", "panică"]):
-        emotion = "stress"
-    elif polarity > 0.4:
-        emotion = "joy"
-    elif polarity < -0.4:
-        emotion = "sadness"
-    else:
-        emotion = "neutral"
-    stress_level = 50 - (polarity * 50)
-    if emotion == "stress":
-        stress_level = 80
-    return emotion, round(stress_level), polarity
-
-
-# 3️⃣ Agent Setup
+    # Provide short context and tell the agent which tools are available and their outputs.
+    # `analyze_emotions` returns JSON: {"emotion","polarity","stress_level"}
+    similar = memory.search(query=user_text)
+    similar_list = list(similar)
+    similar_text = "\n".join(similar_list[:5]) if similar_list else "Niciun eveniment similar în memorie."
+    
 agent = Agent(
     name="stress-journal-agent",
     model=chat_model,
