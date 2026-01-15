@@ -3,6 +3,7 @@ Guardrails module for Stress Journal Agent
 Implements safety measures: input validation, crisis detection, and output filtering
 """
 
+import json
 import re
 import logging
 from collections import defaultdict
@@ -29,6 +30,15 @@ class Guardrails:
     
     def __init__(self):
         self.blocked_count = defaultdict(int)
+        self.crisis_detected_callbacks = []  # List of functions to call when crisis is detected
+        
+        # Helpline numbers for crisis support
+        self.crisis_helplines = {
+            "us": "988",  # US Suicide & Crisis Lifeline
+            "uk": "116 123",  # Samaritans UK
+            "eu": "+386 4 280 60 60",  # EU Crisis Helpline
+            "generic": "988",  # Default/Generic
+        }
         
         # Crisis indicators (with severity levels)
         self.crisis_keywords = {
@@ -49,6 +59,102 @@ class Guardrails:
                 "no point", "nothing matters", "give up",
             ]
         }
+    
+    def register_crisis_callback(self, callback):
+        """
+        Register a callback function to be called when a crisis is detected.
+        
+        Args:
+            callback: Function that takes (crisis_type: str, text: str) as parameters
+        """
+        self.crisis_detected_callbacks.append(callback)
+    
+    def get_crisis_response(self, crisis_type: str) -> str:
+        """
+        Generate crisis response with helpline information.
+        
+        Args:
+            crisis_type: Type of crisis detected (severe_self_harm, severe_harm_others, severe_crisis)
+            
+        Returns:
+            str: Crisis response message with helpline number
+        """
+        crisis_messages = {
+            "severe_self_harm": (
+                "🚨 CRISIS ALERT: SELF-HARM/SUICIDE RISK DETECTED 🚨\n\n"
+                "I'm deeply concerned about your safety. Please reach out for immediate support:\n\n"
+                "📞 HELPLINE: 988 (US Suicide & Crisis Lifeline)\n"
+                "   Text 'HELLO' to 741741 (Crisis Text Line)\n"
+                "   International: findahelpline.com\n\n"
+                "If you're in immediate danger, please call emergency services (911 in US) or go to the nearest emergency room.\n\n"
+                "You matter, and help is available. Please reach out now."
+            ),
+            "severe_harm_others": (
+                "🚨 CRISIS ALERT: HARM TO OTHERS RISK DETECTED 🚨\n\n"
+                "This is a serious situation. Please reach out for immediate support:\n\n"
+                "📞 HELPLINE: 988 (US Suicide & Crisis Lifeline)\n"
+                "   Text 'HELLO' to 741741 (Crisis Text Line)\n"
+                "   International: findahelpline.com\n\n"
+                "If someone is in immediate danger, please call emergency services (911 in US).\n\n"
+                "Support is available. Please reach out now."
+            ),
+            "severe_crisis": (
+                "⚠️ CRISIS ALERT: SEVERE EMOTIONAL CRISIS DETECTED ⚠️\n\n"
+                "I'm concerned about your emotional wellbeing. Please reach out for support:\n\n"
+                "📞 HELPLINE: 988 (US Suicide & Crisis Lifeline)\n"
+                "   Text 'HELLO' to 741741 (Crisis Text Line)\n"
+                "   International: findahelpline.com\n\n"
+                "Trained counselors are available 24/7 to listen and help.\n\n"
+                "You don't have to face this alone. Please reach out now."
+            )
+        }
+        return crisis_messages.get(crisis_type, crisis_messages["severe_crisis"])
+    
+    def check_crisis(self, text: str) -> Tuple[bool, str]:
+        """
+        Detect crisis indicators and return crisis type.
+        
+        Checks for:
+        - Self-harm or suicide indicators
+        - Harm to others
+        - Severe emotional crisis
+        
+        Returns:
+            Tuple[bool, str]: (is_crisis, crisis_type)
+        """
+        text_lower = text.lower()
+        detected_crisis_type = None
+        
+        # Check for self-harm or suicide (HIGHEST PRIORITY)
+        for keyword in self.crisis_keywords.get("severe_self_harm", []):
+            if keyword in text_lower:
+                logger.critical(f"🚨 SEVERE SELF-HARM/SUICIDE CRISIS DETECTED: '{keyword}'")
+                detected_crisis_type = "severe_self_harm"
+                break
+        
+        # Check for harm to others (CRITICAL)
+        if not detected_crisis_type:
+            for keyword in self.crisis_keywords.get("severe_harm_others", []):
+                if keyword in text_lower:
+                    logger.critical(f"🚨 SEVERE HARM TO OTHERS CRISIS DETECTED: '{keyword}'")
+                    detected_crisis_type = "severe_harm_others"
+                    break
+        
+        # Check for severe emotional crisis
+        if not detected_crisis_type:
+            for keyword in self.crisis_keywords.get("severe_crisis", []):
+                if keyword in text_lower:
+                    logger.critical(f"⚠️ SEVERE EMOTIONAL CRISIS DETECTED: '{keyword}'")
+                    detected_crisis_type = "severe_crisis"
+                    break
+        
+        # If crisis detected, trigger callbacks
+        if detected_crisis_type:
+            for callback in self.crisis_detected_callbacks:
+                try:
+                    callback(detected_crisis_type, text)
+                except Exception as e:
+                    logger.error(f"Error in crisis callback: {str(e)}")
         
         # Pattern-based detection for harmful content (catches variations)
         self.harm_patterns = {
@@ -119,53 +225,6 @@ class Guardrails:
         
         return True, ""
     
-    def filter_output(self, response: str) -> str:
-        """
-        Filter response for sensitive information and inappropriate content.
-        
-        Removes/masks:
-        - Email addresses
-        - Phone numbers
-        - URLs (except safe documentation links)
-        - PII patterns
-        
-        Args:
-            response: Raw agent response
-            
-        Returns:
-            str: Filtered response
-        """
-        # Remove email addresses
-        response = re.sub(r'\S+@\S+\.\S+', '[email address]', response)
-        
-        # Remove phone numbers (various formats)
-        response = re.sub(r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b', '[phone number]', response)
-        response = re.sub(r'\+\d{1,3}\s?\d{1,14}', '[phone number]', response)
-        
-        # Remove most URLs (keep safe resource links if needed)
-        response = re.sub(
-            r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+',
-            '[link]',
-            response
-        )
-        
-        # Mask SSN-like patterns
-        response = re.sub(r'\b\d{3}-\d{2}-\d{4}\b', '[SSN]', response)
-        
-        # Check for medical diagnosis claims (non-compliant with agent rules)
-        medical_diagnosis_patterns = [
-            r'you have\s+\w+\s+disorder',
-            r'diagnosed with',
-            r'the\s+diagnosis\s+is',
-        ]
-        for pattern in medical_diagnosis_patterns:
-            if re.search(pattern, response.lower()):
-                logger.warning("Potential medical diagnosis claim detected in response")
-                # Flag but don't remove - let human review
-                response = "[⚠️ Medical claim flagged for review] " + response
-        
-        return response
-    
     def check_crisis(self, text: str) -> Tuple[bool, str]:
         """
         Detect crisis indicators and return crisis type.
@@ -179,84 +238,77 @@ class Guardrails:
             Tuple[bool, str]: (is_crisis, crisis_type)
         """
         text_lower = text.lower()
+        detected_crisis_type = None
         
         # Check for self-harm or suicide (HIGHEST PRIORITY)
         for keyword in self.crisis_keywords.get("severe_self_harm", []):
             if keyword in text_lower:
                 logger.critical(f"🚨 SEVERE SELF-HARM/SUICIDE CRISIS DETECTED: '{keyword}'")
-                return True, "severe_self_harm"
+                detected_crisis_type = "severe_self_harm"
+                break
         
         # Check for harm to others (CRITICAL)
-        for keyword in self.crisis_keywords.get("severe_harm_others", []):
-            if keyword in text_lower:
-                logger.critical(f"🚨 SEVERE HARM TO OTHERS CRISIS DETECTED: '{keyword}'")
-                return True, "severe_harm_others"
+        if not detected_crisis_type:
+            for keyword in self.crisis_keywords.get("severe_harm_others", []):
+                if keyword in text_lower:
+                    logger.critical(f"🚨 SEVERE HARM TO OTHERS CRISIS DETECTED: '{keyword}'")
+                    detected_crisis_type = "severe_harm_others"
+                    break
         
         # Check for severe emotional crisis
-        for keyword in self.crisis_keywords.get("severe_crisis", []):
-            if keyword in text_lower:
-                logger.critical(f"⚠️ SEVERE EMOTIONAL CRISIS DETECTED: '{keyword}'")
-                return True, "severe_crisis"
+        if not detected_crisis_type:
+            for keyword in self.crisis_keywords.get("severe_crisis", []):
+                if keyword in text_lower:
+                    logger.critical(f"⚠️ SEVERE EMOTIONAL CRISIS DETECTED: '{keyword}'")
+                    detected_crisis_type = "severe_crisis"
+                    break
         
-        return False, ""
+        # If crisis detected, trigger callbacks
+        if detected_crisis_type:
+            for callback in self.crisis_detected_callbacks:
+                try:
+                    callback(detected_crisis_type, text)
+                except Exception as e:
+                    logger.error(f"Error in crisis callback: {str(e)}")
+        
+        return bool(detected_crisis_type), detected_crisis_type or ""
     
 
-def create_safe_process_entry(memory, agent, guardrails: Guardrails):
-    """
-    Factory function to create a safe process_entry function with guardrails.
-    
-    Usage:
-        guardrails = Guardrails()
-        safe_process = create_safe_process_entry(memory, agent, guardrails)
-        response = safe_process("user message")
-    """
-    def safe_process_entry(user_text: str) -> str:
+
+    def check_content_safety(self, text: str) -> str:
         """
-        Process user entry with guardrails protection.
+        Check if text is safe and get guardrails feedback.
         
-        Pipeline:
-        1. Input validation
-        2. Crisis detection
-        3. Memory save
-        4. Agent processing
-        5. Output filtering
+        Use this tool to check if user content triggers any guardrail alerts:
+        - Crisis detection (self-harm, suicide, harm to others)
+        - Inappropriate content
+        - Medical diagnosis claims
+        
+        Returns JSON with:
+        - is_safe: true/false
+        - crisis_detected: crisis type (if any)
+        - crisis_message: helpful message if crisis detected
+        - validation_errors: list of validation errors
         """
-        
         try:
-            # Step 1: Input validation
-            is_valid, error_msg = guardrails.validate_input(user_text)
-            if not is_valid:
-                logger.warning(f"Input validation failed: {error_msg}")
-                return f"❌ {error_msg}"
+            # Check input validation
+            is_valid, error_msg = self.validate_input(text)
             
-            # Step 2: Crisis detection
-            is_crisis, crisis_type = guardrails.check_crisis(user_text)
-            if is_crisis:
-                logger.critical(f"CRISIS DETECTED - Type: {crisis_type}")
-                # Return None to signal crisis - caller can handle with appropriate resources
-                return None
+            # Check crisis status
+            is_crisis, crisis_type = self.check_crisis(text)
             
-            # Step 3: Save to memory
-            memory.save(f"User entry: {user_text}")
+            result = {
+                "is_safe": is_valid and not is_crisis,
+                "is_valid": is_valid,
+                "validation_errors": [error_msg] if not is_valid and error_msg else [],
+                "crisis_detected": is_crisis,
+                "crisis_type": crisis_type if is_crisis else None,
+                "crisis_message": self.get_crisis_response(crisis_type) if is_crisis else None,
+            }
             
-            # Step 4: Process with agent
-            response = agent.run(user_text)
-            
-            # Extract message content
-            if hasattr(response, 'content'):
-                response_text = response.content
-            elif isinstance(response, dict) and 'content' in response:
-                response_text = response['content']
-            else:
-                response_text = str(response)
-            
-            # Step 5: Filter output
-            filtered_response = guardrails.filter_output(response_text)
-            
-            return filtered_response
-            
+            return json.dumps(result)
         except Exception as e:
-            logger.error(f"Error in safe_process_entry: {str(e)}", exc_info=True)
-            return "⚠️ An error occurred while processing your request. Please try again or contact support."
-    
-    return safe_process_entry
+            return json.dumps({
+                "error": str(e),
+                "is_safe": False
+            })
