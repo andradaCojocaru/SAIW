@@ -4,74 +4,92 @@
 
 ## 1. System Overview
 
-The Stress Journal AI Agent is a mental health support chatbot designed to provide compassionate stress monitoring, emotion analysis, and personalized guidance through a command-line interface. Built with Python, the Agno framework, and OpenAI's GPT-4o-mini model, it integrates persistent memory storage, advanced guardrails, and emotion detection to create a safe, supportive experience for users documenting their mental health journey.
+The Stress Journal AI Agent is a mental health support chatbot designed to provide compassionate stress monitoring, emotion analysis, and personalized guidance. Built with Python, the Agno framework, and OpenAI's GPT-4o-mini model, it integrates persistent memory storage, advanced guardrails, and emotion detection to create a safe, supportive experience for users documenting their mental health journey.
+
+### Interface & Framework
+
+**Agno Framework & UI**
+
+The application is built on the Agno framework, which provides a powerful agent orchestration system with built-in UI capabilities. Agno handles agent initialization, tool management, and conversation flow management. The framework exposes a FastAPI-based web interface (accessible via Agno's UI) that provides a user-friendly chat interface for interacting with the agent. Users access the agent through Agno's web portal [[1]], where they can engage in real-time conversations, view memory retrieval context, and access crisis resources. The framework also provides REST API endpoints for programmatic access and integrates CORS middleware to support multiple client origins.
 
 ### Key Components
 
-**Memory System:** The agent uses Mem0 cloud API for persistent, categorized memory that spans across user sessions. All user entries are automatically stored with the consistent user ID "stress_journal_user," enabling the agent to recall previous conversations and provide contextual, personalized responses without requiring users to re-explain their situation.
+**Agent Framework & Tool System**
 
-**Agent Framework:** Built on the Agno framework, the agent leverages OpenAI's GPT-4o-mini model as its core language model. The framework integrates multiple tools including emotion analysis for sentiment detection, memory management for context retrieval, reasoning tools for deeper analysis, and Tavily web search for current information when needed.
+Built on the Agno framework, the agent leverages OpenAI's GPT-4o-mini model as its core language model. The framework manages a comprehensive tool ecosystem including: emotion analysis for sentiment detection, memory management for context retrieval, content safety checking, reasoning tools for deeper analysis, and Tavily web search for current information. The Agno framework automatically exposes these tools to the LLM, allowing the agent to decide when and how to use them during conversations.
 
-**Guardrails System:** A comprehensive three-layer safety system protects users by validating input for harmful content, detecting crisis indicators, and filtering agent responses for sensitive information. The guardrails use pattern-based detection rather than fixed-phrase matching, allowing flexibility to catch variations in how users express harmful intent.
+**Guardrails System**
 
-**Sentiment Analysis:** TextBlob provides polarity detection on a -1 to 1 scale, which is combined with keyword-based emotion classification to identify stress, joy, sadness, or neutral emotional states. Stress levels are calculated on a 0-100 scale with heuristic adjustments based on detected emotions.
+A comprehensive safety system protects users by validating input for harmful content, detecting crisis indicators, and filtering agent responses for sensitive information. Beyond the input/output wrapper layer, guardrails are also exposed as an LLM tool function (`check_content_safety`) that allows the agent to proactively check content before processing and provide informed, empathetic responses when safety concerns are detected.
 
 **Database:** SQLite database (agno.db) stores agent conversation history, providing context for recent interactions and enabling the agent to recall important discussion points from the current session.
 
 ## 2. Core Implementation
 
-### Guardrails Architecture
+### Memory Controller Architecture
 
-The guardrails implement a three-layer validation pipeline that processes both user inputs and agent responses:
+The agent uses Mem0 cloud API [[2]] for persistent, categorized memory that spans across user sessions. All user entries are automatically stored with the consistent user ID "stress_journal_user," enabling the agent to recall previous conversations and provide contextual, personalized responses without requiring users to re-explain their situation.
 
-**Input Validation Layer:** This layer performs preliminary safety checks on all user messages. It validates that input is not empty, falls within acceptable length constraints (2-5000 characters), and does not contain harmful content patterns. The validation uses regex patterns to detect variations of harmful intent rather than exact phrase matching, enabling detection of statements like "hurt my teacher" or "cut my wrist" even when phrased differently.
+For storing the memory, the user entries are saved using `save(text, user)` which converts text into Mem0 message format with a consistent user ID ("stress_journal_user"). This ensures all entries are attributed to the same user across sessions, enabling continuous context accumulation without fragmentation across multiple user accounts.
 
-**Crisis Detection Layer:** When input passes validation, the system checks for crisis indicators across three severity levels. Severe self-harm indicators include keywords related to suicide, self-injury, and suicidal ideation. Severe harm-to-others indicators detect violent intent toward specific individuals like teachers, family members, or coworkers. Severe emotional crisis indicators identify expressions of hopelessness, worthlessness, and desire to give up. When a crisis is detected, the system returns appropriate resources rather than processing the message normally.
+Memory's retrieval is done by the `search(query, user)` method, performing semantic similarity searches across all stored memories. When a user submits new text, the agent searches for relevant past entries using natural language queries. This returns the most contextually similar previous conversations, enabling the agent to recognize patterns, remember previous discussions, and provide responses that acknowledge historical context.
 
-**Output Filtering Layer:** The agent's responses are filtered to remove or mask sensitive information including email addresses, phone numbers, Social Security numbers, and URLs. The system also flags medical diagnosis claims in responses, ensuring the agent does not make or reinforce medical diagnoses, while still allowing discussions about emotions related to existing diagnoses.
+The system is also making use of an SQLite database that stores the current conversation history. This provides immediate context for recent interactions within the Agno framework, enabling the agent to reference what was discussed minutes ago without requiring memory searches.
 
-### Harm Detection Strategy
+### Emotion Analysis System
 
-The system moved from fixed-phrase blocking to pattern-based detection for greater flexibility. Self-harm patterns capture variations like "cut my wrist," "hurt myself," "want to die," and related expressions. Harm-to-others patterns detect statements combining harm verbs (kill, hurt, attack) with specific targets (my teacher, my boss, my family). This approach significantly reduces false positives while catching genuine harmful content expressed in different ways.
+The emotion analysis is an important part for the agent's purpose and it is also done by tool calling. The emotion analysis tool has defined two layers of inspecting the user's input.
 
-**Medical Claim Detection:** A key refinement allows users to discuss their feelings about diagnoses while blocking new diagnosis assertions. The system blocks claims like "I was diagnosed with schizophrenia" or "I have Alzheimer," but allows discussions like "I'm worried about my Alzheimer diagnosis and how it will affect my family." This distinction is crucial for enabling therapeutic conversation about existing conditions while preventing the agent from making or reinforcing medical diagnoses.
+At first, the tool starts by determining a category for the input using a transformer-based classification. The system uses the a transformer model to classify text into detailed emotion categories: anger, disgust, fear, joy, neutral, sadness, and surprise. This DistilRoBERTa-based model provides nuanced emotion detection beyond simple keyword matching, capturing context and linguistic subtleties. 
 
-### Memory Management
+Continuing with a TextBlob's sentiment analysis in order to provide polarity scores (-1 to 1, where -1 is highly negative and 1 is highly positive). The system combines transformer predictions with polarity to calculate: primary emotion - the highest-confidence emotion from the transformer model,stress level: a 0-100 scale score calculated by aggregating stress-inducing emotions (anger, fear, disgust) and adjusted by overall sentiment polarity, emotion categories: mapped to five user-facing categories (stress, joy, sadness, anger, neutral) for clarity.
 
-All user entries are automatically saved to persistent Mem0 storage. When users return in new sessions, the agent searches the memory system to recall relevant past conversations. This continuity eliminates the need for users to re-explain their situation and allows the agent to recognize patterns in their stress, emotional state, and life circumstances. The agent uses these memories to provide contextual responses that acknowledge the user's history and track their emotional progress.
+If the transformer model fails to load, the system gracefully falls back to TextBlob-only analysis, ensuring the agent remains functional with reduced emotion detection capability.
 
-## 3. Safety & Compliance
+The emotion analysis is exposed as the `analyze_emotions_tool` that the LLM can invoke, returning JSON with `emotion`, `polarity`, and `stress_level` for informed decision-making during conversations.
 
-### Crisis Response Protocol
+### Tavily Web Search Integration
 
-When the guardrails detect a crisis, the system responds appropriately based on severity. For self-harm crises, users receive information about the 988 National Suicide Prevention Lifeline, Crisis Text Line, and emergency services, along with reassuring messages about recovery and the value of their life. For harm-to-others crises, the response emphasizes the need for professional psychiatric evaluation and emergency intervention. For severe emotional crises, users receive information about mental health resources including therapist finders and crisis support lines.
+The Tavily search tool [[3]] is integrated into the Agno framework's tool ecosystem, allowing the agent to fetch different types of information when needed, such as new definitions for affections or therapy guidelines. The agent can use Tavily to: find current mental health resources, therapy techniques, or coping strategies, locate crisis hotlines, support groups, or local mental health services, retrieve information about specific mental health topics, stress management techniques, or wellness practices, access recent research or evidence-based recommendations.
 
-These responses are formatted for immediate readability with clear calls-to-action and emphasize the importance of professional help. Rather than processing the user's message through the agent, the system prioritizes getting them to appropriate resources.
+Tavily requires an API key stored in the enviroment configuration. The tool is conditionally available to the agent - if the API key is not configured, the agent still functions without search capability but loses access to real-time information retrieval.
 
-### Logging & Monitoring
+### Safetiness
 
-The system maintains detailed logging for all safety-critical events. Crisis detections are logged at CRITICAL level for immediate visibility. Input validation failures and blocked content are logged at WARNING level. All logging is configured to suppress verbose external library noise (urllib3, httpx, openai, mem0) to keep the output clean and focused on application-level events.
+The safetiness of the conversation is mentained by the  guardrails' implementation,  a comprehensive validation system with a LLM-accessible tools. In order to have a reliable tool that offers a good feedback on the direction where the conversation is heading, there are two layers of analysis.
 
-### Limitations & Professional Care
+Starting with an input validation layer, it performs preliminary safety checks on all user messages. It validates that input is not empty, falls within acceptable length constraints (2-5000 characters), and does not contain harmful content patterns. The validation uses regex patterns to detect variations of harmful intent rather than exact phrase matching, enabling detection of statements like "hurt my teacher" or "cut my wrist" even when phrased differently.
 
-The agent explicitly acknowledges its limitations. The agent cannot provide medical diagnoses, psychiatric treatment, or professional mental health care. All interactions are designed to complement professional mental health services, not replace them. Users are consistently directed toward healthcare professionals for medical concerns and crisis situations.
+When input passes validation, the system checks for crisis indicators across three severity levels: severe self-harm indicators include keywords related to suicide, self-injury, and suicidal ideation, severe harm-to-others indicators detect violent intent toward specific individuals like teachers, family members, or coworkers, severe emotional crisis indicators identify expressions of hopelessness, worthlessness, and desire to give up. When a crisis is detected, the system returns appropriate helpline information and resources rather than processing the message normally.
 
-## 4. Future Implementations
+Another key refinement of the response, possible with the help of the guardrails, allows users to discuss their feelings about diagnoses while blocking new diagnosis assertions. The system blocks claims like "I was diagnosed with schizophrenia" or "I have Alzheimer," but allows discussions like "I'm worried about my Alzheimer diagnosis and how it will affect my family." This distinction is crucial for enabling therapeutic conversation about existing conditions while preventing the agent from making or reinforcing medical diagnoses.
 
-### UI/UX Enhancements
+The `check_content_safety(text: str)` tool function is exposed to the LLM, allowing the agent to proactively check content safety during conversations. This enables the agent to intelligently respond to safety concerns with empathy, provide crisis resources proactively, and adjust its communication style based on detected content severity.
 
-**Web Dashboard:** A potential web interface could display conversation history, mood trend charts, and emotional patterns over time. Users could visualize their stress levels across weeks and months, identify patterns, and track progress.
+## 3. Key Takeaways
 
-### Enhanced Guardrails
+The Stress Journal AI Agent represents a comprehensive mental health support system that successfully integrates multiple advanced technologies into a coherent, safe platform. 
 
-**Advanced Pattern Detection:** Integration with machine learning-based toxicity detection could potentially improve accuracy in distinguishing genuine crises from casual language.
+The guardrails system operates at two levels - input validation, crisis detection - all wrapped in a LLM-accessible tool that enables intelligent, context-aware safety responses.
 
-**Context-Aware Filtering:** Future versions might reduce false positives by better understanding context and nuance in user expressions.
+By persisting memories across sessions, the system eliminates the need for users to repeatedly provide context. The agent can recognize a returning user, recall their previous concerns, and track emotional progress over weeks or months.
 
-**Emotion Tracking:** The system could potentially track emotional patterns across conversations to identify concerning trends early.
+The agent intelligently searches memory only when contextually relevant. For new topics, it searches for related entries. For follow-ups, it uses session history. This balances context richness with computational efficiency.
 
-### Prompt & Response Improvements
+By calling the tavily tool, the agent could access better information that could help the approach, considering that the user could display different affections that need to be treated individually, but all with empaty.
 
-**Personalized Responses:** Future iterations could generate responses more tailored to individual user history and preferred coping strategies.
+## 4. Conclusion & Future Directions
 
-**Structured Formatting:** Responses could potentially be better organized with clear sections for acknowledgment, validation, suggestions, and resources.
+This implementation establishes a robust foundation for AI-driven mental health support, demonstrating how advanced technologies — persistent memory, multi-layered safety systems, transformer-based emotion analysis, and intelligent tool orchestration — can be seamlessly integrated to create a responsible, compassionate mental health companion. The system successfully balances user safety with genuine support, combining proactive crisis detection with empathetic engagement, all while respecting privacy and maintaining clear boundaries about its role as a supportive tool rather than a medical service.
+
+Improvements include adding mood trend visualization to help users recognize patterns in their emotional cycles, implementing context-aware crisis protocols that leverage user history, and building a library of personalized coping strategies based on detected emotions. These additions would enhance the agent's ability to provide targeted, historically-informed support.
+
+## References
+
+1: https://os.agno.com
+
+2: https://mem0.ai/pricing
+
+3: https://www.tavily.com/
+
+
