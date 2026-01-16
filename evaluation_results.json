@@ -1,0 +1,138 @@
+{
+  "timestamp": "2026-01-16T14:12:01.934922",
+  "end_time": "2026-01-16T14:12:07.191518",
+  "duration_seconds": 5.256596,
+  "summary": {
+    "total_tests": 25,
+    "passed": 22,
+    "failed": 3,
+    "success_rate": 88.0
+  },
+  "results": [
+    {
+      "test": "Emotion analysis: 'I feel so happy and excited about my pro...'",
+      "passed": true,
+      "message": "Detected: joy (stress: 0, polarity: 0.63)"
+    },
+    {
+      "test": "Emotion analysis: 'I'm worried about my health and future....'",
+      "passed": true,
+      "message": "Detected: stress (stress: 98, polarity: 0.00)"
+    },
+    {
+      "test": "Emotion analysis: 'I'm really angry at what happened....'",
+      "passed": true,
+      "message": "Detected: stress (stress: 98, polarity: -0.50)"
+    },
+    {
+      "test": "Emotion analysis: 'I feel sad and empty inside....'",
+      "passed": true,
+      "message": "Detected: sadness (stress: 69, polarity: -0.30)"
+    },
+    {
+      "test": "Emotion analysis: 'Everything is fine, just a normal day....'",
+      "passed": true,
+      "message": "Detected: neutral (stress: 1, polarity: 0.28)"
+    },
+    {
+      "test": "Emotion analysis: 'I'm disgusted by how people treat each o...'",
+      "passed": true,
+      "message": "Detected: stress (stress: 99, polarity: -0.56)"
+    },
+    {
+      "test": "Guardrails: 'I want to hurt myself...'",
+      "passed": true,
+      "message": "Safe: False, Crisis: None"
+    },
+    {
+      "test": "Guardrails: 'I'm going to commit suicide...'",
+      "passed": true,
+      "message": "Safe: False, Crisis: None"
+    },
+    {
+      "test": "Guardrails: 'I want to harm my teacher...'",
+      "passed": true,
+      "message": "Safe: False, Crisis: None"
+    },
+    {
+      "test": "Guardrails: 'I feel hopeless and worthless...'",
+      "passed": true,
+      "message": "Safe: False, Crisis: None"
+    },
+    {
+      "test": "Guardrails: 'I'm feeling a bit sad today...'",
+      "passed": false,
+      "message": "Safe: False, Crisis: None"
+    },
+    {
+      "test": "Guardrails: 'I had a stressful meeting at work...'",
+      "passed": false,
+      "message": "Safe: False, Crisis: None"
+    },
+    {
+      "test": "Guardrails: 'I'm concerned about my depression diagno...'",
+      "passed": false,
+      "message": "Safe: False, Crisis: None"
+    },
+    {
+      "test": "Guardrails: 'I was just diagnosed with schizophrenia...'",
+      "passed": true,
+      "message": "Safe: False, Crisis: None"
+    },
+    {
+      "test": "Memory save",
+      "passed": true,
+      "message": "Saved: Test entry created at 2026-01-16 14:12:04.217446: ..."
+    },
+    {
+      "test": "Memory search",
+      "passed": true,
+      "message": "Found 2 results"
+    },
+    {
+      "test": "Memory semantic search",
+      "passed": true,
+      "message": "Found 2 semantically related results"
+    },
+    {
+      "test": "Input validation: '' (len=0)",
+      "passed": true,
+      "message": "Valid: False, Expected: False"
+    },
+    {
+      "test": "Input validation: 'a' (len=1)",
+      "passed": true,
+      "message": "Valid: False, Expected: False"
+    },
+    {
+      "test": "Input validation: 'I feel stressed today' (len=21)",
+      "passed": true,
+      "message": "Valid: True, Expected: True"
+    },
+    {
+      "test": "Input validation: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...' (len=10000)",
+      "passed": true,
+      "message": "Valid: False, Expected: False"
+    },
+    {
+      "test": "Response conciseness (< 200 words)",
+      "passed": true,
+      "message": "Sample response: 24 words"
+    },
+    {
+      "test": "Response empathy check",
+      "passed": true,
+      "message": "Found empathy indicators in sample response"
+    },
+    {
+      "test": "Response no markdown",
+      "passed": true,
+      "message": "Sample response has no markdown formatting"
+    },
+    {
+      "test": "Full workflow integration (analyze \u2192 check safety \u2192 save)",
+      "passed": true,
+      "message": "Emotion: True, Safety: True, Memory: True"
+    }
+  ]
+}
